@@ -1,0 +1,36 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.26"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 800
+via_ir = false
+bytecode_hash = "none"
+cbor_metadata = false
+fs_permissions = [{ access = "read-write", path = "./deployments" }, { access = "read", path = "./out" }]
+gas_reports = ["YeetLaunchpad", "YeetToken", "YeetHook", "YeetGraduator", "YeetRouter"]
+remappings = [
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+  "v4-core/=lib/v4-core/src/",
+  "forge-std/=lib/forge-std/src/",
+]
+[fuzz]
+runs = 512
+[invariant]
+runs = 64
+depth = 32
+fail_on_revert = false
+
+# v4 PoolManager only fits under EIP-170 with these settings (matches v4-core's own profile)
+[profile.v4]
+optimizer_runs = 44444
+via_ir = false
+
+[rpc_endpoints]
+arc-testnet = "${ARC_TESTNET_RPC}"
+arc-mainnet = "${ARC_MAINNET_RPC}"
+
+[etherscan]
+arc-testnet = { key = "${ARCSCAN_API_KEY}", url = "https://testnet.arcscan.app/api", chain = 5042002 }

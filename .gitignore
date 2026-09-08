@@ -1,0 +1,5 @@
+cache/
+out/
+foundry-pp/
+broadcast/**/dry-run/
+.env
