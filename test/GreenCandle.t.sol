@@ -158,10 +158,10 @@ contract GreenCandleTest is BaseTest {
         uint256 deadBefore = yeet.balanceOf(DEAD);
         vm.prank(carol);
         (uint256 usdcIn, uint256 burned) = buyback.execute(type(uint256).max);
-        assertEq(usdcIn, 3e18);
+        assertEq(usdcIn, 2.55e18); // 85% of the 3 USDC fee
         assertEq(yeet.balanceOf(DEAD) - deadBefore, burned);
         assertGt(burned, 0);
-        assertEq(address(buyback).balance, 0);
+        assertEq(address(buyback).balance, 0.45e18); // treasury's 15% waits to be pulled
         // the protocol buyback paid no protocol fee on itself (fees unchanged), but did pay YEET holders their dividend
         assertEq(launchpad.accruedFees(), 0);
 
@@ -172,7 +172,7 @@ contract GreenCandleTest is BaseTest {
         router.buy{value: 1_000e18}(address(yeet), 0); // pool trade: hook fees accrue
         hook.sweepFees();
         launchpad.sweepFees();
-        uint256 bal = address(buyback).balance;
+        uint256 bal = buyback.burnBalance();
         assertGt(bal, 0);
         deadBefore = yeet.balanceOf(DEAD);
         (usdcIn, burned) = buyback.execute(type(uint256).max);

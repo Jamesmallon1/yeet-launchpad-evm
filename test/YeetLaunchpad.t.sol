@@ -138,10 +138,21 @@ contract YeetLaunchpadTest is BaseTest {
         assertEq(launchpad.accruedFees(), 0);
         assertEq(address(buyback).balance, 3e18);
         assertEq(buyback.totalReceived(), 3e18);
-        // no owner path to withdraw anything, ever
+        // 85% is reserved for burns, 15% for the treasury; no owner path to the 85%, ever
+        assertEq(buyback.burnBalance(), 2.55e18);
+        assertEq(buyback.treasuryAccrued(), 0.45e18);
         vm.prank(owner);
         vm.expectRevert(YeetBuyback.TokenNotSet.selector);
         buyback.execute(type(uint256).max);
+        // only the treasury can pull its share
+        vm.prank(bob);
+        vm.expectRevert(YeetBuyback.NotTreasury.selector);
+        buyback.withdrawTreasury();
+        uint256 pre = owner.balance;
+        vm.prank(owner); // treasury defaults to the owner
+        buyback.withdrawTreasury();
+        assertEq(owner.balance - pre, 0.45e18);
+        assertEq(address(buyback).balance, 2.55e18);
     }
 
     function test_pauseCreation() public {

@@ -154,6 +154,7 @@ contract PoolTest is BaseTest {
         hook.sweepFees();
         assertEq(hook.accruedFees(), 0);
         assertEq(address(buyback).balance, 3e18);
+        assertEq(buyback.burnBalance(), 2.55e18);
     }
 
     function test_liquidityIsLocked() public view {

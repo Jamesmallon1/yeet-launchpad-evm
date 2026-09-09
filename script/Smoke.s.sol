@@ -20,7 +20,7 @@ contract Smoke is Script {
         vm.startBroadcast(pk);
         // 1. create with 3% dividends and a 5% dev buy
         uint256 devCost = launchpad.TARGET_USDC() * 2 / 100; // ~1.7% of target buys 5% on this curve; overpay is fine
-        YeetToken t = YeetToken(launchpad.createToken{value: devCost}("Smoke Cat", "SMOKE", "ipfs://smoke", 300, 5000, 500));
+        YeetToken t = YeetToken(launchpad.createToken{value: devCost}("Smoke Cat", "SMOKE", "ipfs://smoke", 300, 6000, 500));
         console.log("token", address(t), "dev tokens", t.balanceOf(me));
 
         // 2. sell a slice back
