@@ -146,13 +146,14 @@ contract PoolTest is BaseTest {
         assertGt(carol.balance, pre);
     }
 
-    function test_hookFeeWithdraw() public {
+    function test_hookFeesSweepToBuyback() public {
         vm.prank(bob);
         router.buy{value: 1_000e18}(address(t), 0);
-        uint256 pre = owner.balance;
-        vm.prank(owner);
-        hook.withdrawFees(owner);
-        assertEq(owner.balance - pre, 3e18);
+        assertEq(hook.accruedFees(), 3e18);
+        vm.prank(bob);
+        hook.sweepFees();
+        assertEq(hook.accruedFees(), 0);
+        assertEq(address(buyback).balance, 3e18);
     }
 
     function test_liquidityIsLocked() public view {

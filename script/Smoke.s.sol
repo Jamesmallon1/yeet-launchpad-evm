@@ -20,7 +20,7 @@ contract Smoke is Script {
         vm.startBroadcast(pk);
         // 1. create with 3% dividends and a 5% dev buy
         uint256 devCost = launchpad.TARGET_USDC() * 2 / 100; // ~1.7% of target buys 5% on this curve; overpay is fine
-        YeetToken t = YeetToken(launchpad.createToken{value: devCost}("Smoke Cat", "SMOKE", "ipfs://smoke", 300, 500));
+        YeetToken t = YeetToken(launchpad.createToken{value: devCost}("Smoke Cat", "SMOKE", "ipfs://smoke", 300, 5000, 500));
         console.log("token", address(t), "dev tokens", t.balanceOf(me));
 
         // 2. sell a slice back
@@ -31,7 +31,7 @@ contract Smoke is Script {
 
         // 3. buy through to completion (graduation is atomic in the final buy)
         for (uint256 i; i < 12; ++i) {
-            (,,, bool complete,,,,) = launchpad.curves(address(t));
+            (,,,, bool complete,,,,,,) = launchpad.curves(address(t));
             if (complete) break;
             launchpad.buy{value: launchpad.TARGET_USDC() / 4}(address(t), 0);
         }
@@ -51,7 +51,7 @@ contract Smoke is Script {
     }
 
     function _checkGraduated(YeetLaunchpad launchpad, address token) internal view {
-        (,,, bool done, bool graduated,,, bytes32 poolId) = launchpad.curves(token);
+        (,,,, bool done, bool graduated,,, bytes32 poolId,,) = launchpad.curves(token);
         console.log("complete", done, "graduated", graduated);
         console.logBytes32(poolId);
         require(graduated, "not graduated");

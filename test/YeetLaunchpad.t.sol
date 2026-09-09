@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {BaseTest} from "./Base.t.sol";
 import {YeetToken} from "../src/YeetToken.sol";
 import {YeetLaunchpad} from "../src/YeetLaunchpad.sol";
+import {YeetBuyback} from "../src/YeetBuyback.sol";
 import {CurveMath} from "../src/libraries/CurveMath.sol";
 import {PoolId} from "v4-core/types/PoolId.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
@@ -35,24 +36,27 @@ contract YeetLaunchpadTest is BaseTest {
     function test_devBuyShortfallReverts() public {
         vm.expectRevert(YeetLaunchpad.DevBuyShortfall.selector);
         vm.prank(alice);
-        launchpad.createToken{value: 10e18}("A", "A", "u", 0, 500);
+        launchpad.createToken{value: 10e18}("A", "A", "u", 0, 0, 500);
     }
 
     function test_devBuyCap() public {
         vm.expectRevert(YeetLaunchpad.DevBuyTooLarge.selector);
         vm.prank(alice);
-        launchpad.createToken{value: 1e18}("A", "A", "u", 0, 5001);
+        launchpad.createToken{value: 1e18}("A", "A", "u", 0, 0, 5001);
     }
 
     function test_invalidTax() public {
         vm.expectRevert(YeetLaunchpad.InvalidTax.selector);
         vm.prank(alice);
-        launchpad.createToken("A", "A", "u", 200, 0);
+        launchpad.createToken("A", "A", "u", 200, 0, 0);
+        vm.expectRevert(YeetLaunchpad.InvalidSplit.selector);
+        vm.prank(alice);
+        launchpad.createToken("A", "A", "u", 300, 10_001, 0);
     }
 
     function test_buySellFeesAndReserves() public {
         YeetToken t = create(alice, 100, 0, 0);
-        (uint256 q,,,) = launchpad.quoteBuy(address(t), 1_000e18); // quoted on the same state as the buy
+        (uint256 q,,,,,) = launchpad.quoteBuy(address(t), 1_000e18); // quoted on the same state as the buy
         uint256 out = buy(bob, t, 1_000e18);
         assertEq(out, CurveMath.tokensOut(P, 0, 0, 1_000e18 - 3e18 - 10e18));
         assertEq(q, out);
@@ -124,17 +128,20 @@ contract YeetLaunchpadTest is BaseTest {
         assertTrue(curve(t).graduated);
     }
 
-    function test_withdrawFeesOnlyOwner() public {
+    function test_protocolFeesCanOnlyGoToBuyback() public {
         YeetToken t = create(alice, 0, 0, 0);
         buy(bob, t, 1_000e18);
-        vm.expectRevert();
+        assertEq(launchpad.accruedFees(), 3e18);
+        // anyone can sweep; the only destination is the buyback contract
         vm.prank(bob);
-        launchpad.withdrawFees(bob);
-        uint256 pre = owner.balance;
-        vm.prank(owner);
-        launchpad.withdrawFees(owner);
-        assertEq(owner.balance - pre, 3e18);
+        launchpad.sweepFees();
         assertEq(launchpad.accruedFees(), 0);
+        assertEq(address(buyback).balance, 3e18);
+        assertEq(buyback.totalReceived(), 3e18);
+        // no owner path to withdraw anything, ever
+        vm.prank(owner);
+        vm.expectRevert(YeetBuyback.TokenNotSet.selector);
+        buyback.execute(type(uint256).max);
     }
 
     function test_pauseCreation() public {
@@ -142,7 +149,7 @@ contract YeetLaunchpadTest is BaseTest {
         launchpad.setCreationPaused(true);
         vm.expectRevert(YeetLaunchpad.CreationIsPaused.selector);
         vm.prank(alice);
-        launchpad.createToken("A", "A", "u", 0, 0);
+        launchpad.createToken("A", "A", "u", 0, 0, 0);
         // trading unaffected
         vm.prank(owner);
         launchpad.setCreationPaused(false);

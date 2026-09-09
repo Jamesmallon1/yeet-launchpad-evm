@@ -15,6 +15,7 @@ contract YeetToken is ERC20, ERC20Permit, ReentrancyGuard {
     uint256 private constant MAGNITUDE = 2 ** 128;
 
     uint16 public immutable taxBps; // 0, 100 or 300
+    uint16 public immutable burnShareBps; // share of every dividend used to buy this token back and burn it (0..10000)
     address public immutable launchpad;
     address public immutable hook;
     string public metadataURI;
@@ -42,12 +43,15 @@ contract YeetToken is ERC20, ERC20Permit, ReentrancyGuard {
         string memory symbol_,
         string memory metadataURI_,
         uint16 taxBps_,
+        uint16 burnShareBps_,
         address launchpad_,
         address hook_,
         address[] memory excluded_
     ) ERC20(name_, symbol_) ERC20Permit(name_) {
         if (!(taxBps_ == 0 || taxBps_ == 100 || taxBps_ == 300)) revert InvalidTax();
+        if (burnShareBps_ > 10_000) revert InvalidTax();
         taxBps = taxBps_;
+        burnShareBps = burnShareBps_;
         launchpad = launchpad_;
         hook = hook_;
         metadataURI = metadataURI_;

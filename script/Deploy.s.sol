@@ -9,6 +9,7 @@ import {YeetLaunchpad} from "../src/YeetLaunchpad.sol";
 import {YeetHook} from "../src/YeetHook.sol";
 import {YeetGraduator} from "../src/YeetGraduator.sol";
 import {YeetRouter} from "../src/YeetRouter.sol";
+import {YeetBuyback} from "../src/YeetBuyback.sol";
 import {HookMiner} from "./HookMiner.sol";
 
 /// Usage:
@@ -31,6 +32,7 @@ contract Deploy is Script {
         address hook;
         address graduator;
         address router;
+        address buyback;
         address poolManager;
         address owner;
         address deployer;
@@ -81,16 +83,19 @@ contract Deploy is Script {
         YeetGraduator graduator = new YeetGraduator(pm, hook, d.launchpad);
         d.graduator = address(graduator);
         d.router = address(new YeetRouter(pm, hook));
+        YeetBuyback buyback = new YeetBuyback(pm, d.hook, d.launchpad, d.owner);
+        d.buyback = address(buyback);
 
         hook.setGraduator(d.graduator);
+        hook.setBuyback(d.buyback);
         if (d.owner != d.deployer) hook.transferOwnership(d.owner); // owner must acceptOwnership()
-        if (d.owner == d.deployer) launchpad.initialize(d.graduator, d.hook, d.poolManager);
+        if (d.owner == d.deployer) launchpad.initialize(d.graduator, d.hook, d.poolManager, d.buyback);
 
         vm.stopBroadcast();
 
         _write(suffix);
         if (d.owner != d.deployer) {
-            console.log("ACTION: owner must call launchpad.initialize(graduator, hook, poolManager) and hook.acceptOwnership()");
+            console.log("ACTION: owner must call launchpad.initialize(graduator, hook, poolManager, buyback), hook.acceptOwnership(), buyback.acceptOwnership()");
         }
     }
 
@@ -101,6 +106,7 @@ contract Deploy is Script {
         vm.serializeAddress(j, "hook", d.hook);
         vm.serializeAddress(j, "graduator", d.graduator);
         vm.serializeAddress(j, "router", d.router);
+        vm.serializeAddress(j, "buyback", d.buyback);
         vm.serializeAddress(j, "poolManager", d.poolManager);
         vm.serializeAddress(j, "usdc", USDC);
         vm.serializeAddress(j, "owner", d.owner);
@@ -117,5 +123,6 @@ contract Deploy is Script {
         console.log("hook", d.hook);
         console.log("graduator", d.graduator);
         console.log("router", d.router);
+        console.log("buyback", d.buyback);
     }
 }

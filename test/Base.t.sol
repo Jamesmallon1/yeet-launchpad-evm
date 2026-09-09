@@ -10,6 +10,7 @@ import {YeetToken} from "../src/YeetToken.sol";
 import {YeetHook} from "../src/YeetHook.sol";
 import {YeetGraduator} from "../src/YeetGraduator.sol";
 import {YeetRouter} from "../src/YeetRouter.sol";
+import {YeetBuyback} from "../src/YeetBuyback.sol";
 import {CurveMath} from "../src/libraries/CurveMath.sol";
 
 contract BaseTest is Test {
@@ -26,6 +27,7 @@ contract BaseTest is Test {
     YeetHook hook;
     YeetGraduator graduator;
     YeetRouter router;
+    YeetBuyback buyback;
 
     function setUp() public virtual {
         pm = new PoolManager(owner);
@@ -40,10 +42,12 @@ contract BaseTest is Test {
 
         graduator = new YeetGraduator(pm, hook, address(launchpad));
         router = new YeetRouter(pm, hook);
+        buyback = new YeetBuyback(pm, address(hook), address(launchpad), owner);
 
         vm.startPrank(owner);
         hook.setGraduator(address(graduator));
-        launchpad.initialize(address(graduator), address(hook), address(pm));
+        hook.setBuyback(address(buyback));
+        launchpad.initialize(address(graduator), address(hook), address(pm), address(buyback));
         vm.stopPrank();
 
         vm.deal(alice, 100_000e18);
@@ -52,8 +56,13 @@ contract BaseTest is Test {
     }
 
     function create(address creator, uint16 taxBps, uint16 devBuyBps, uint256 value) internal returns (YeetToken t) {
+        return createSplit(creator, taxBps, 0, devBuyBps, value);
+    }
+
+    function createSplit(address creator, uint16 taxBps, uint16 burnShareBps, uint16 devBuyBps, uint256 value) internal returns (YeetToken t) {
         vm.prank(creator);
-        t = YeetToken(launchpad.createToken{value: value}("Yeet Cat", "YCAT", "ipfs://meta", taxBps, devBuyBps));
+        t = YeetToken(launchpad.createToken{value: value}("Yeet Cat", "YCAT", "ipfs://meta", taxBps, burnShareBps, devBuyBps));
+        vm.warp(block.timestamp + 10); // past the snipe-tax window unless a test wants it
     }
 
     function buy(address who, YeetToken t, uint256 usdc) internal returns (uint256 out) {
@@ -71,14 +80,12 @@ contract BaseTest is Test {
     /// buys in chunks until the curve completes (and graduates)
     function completeCurve(YeetToken t) internal {
         for (uint256 i; i < 50; ++i) {
-            (,,, bool complete,,,,) = launchpad.curves(address(t));
-            if (complete) return;
+            if (curve(t).complete) return;
             buy(carol, t, 2_000e18);
         }
     }
 
-    function curve(YeetToken t) internal view returns (YeetLaunchpad.Curve memory c) {
-        (c.realUsdc, c.tokensSold, c.taxBps, c.complete, c.graduated, c.creator, c.createdAt, c.poolId) =
-            launchpad.curves(address(t));
+    function curve(YeetToken t) internal view returns (YeetLaunchpad.Curve memory) {
+        return launchpad.curveOf(address(t));
     }
 }
